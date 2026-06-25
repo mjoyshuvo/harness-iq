@@ -532,44 +532,69 @@ function bar(pct, width = 20) {
   return "█".repeat(fill) + "·".repeat(width - fill);
 }
 
-function renderTerminal(r) {
+// Canonical, deterministic report layout. Same harness → byte-identical output.
+// Fixed widths and fixed section order so the format never varies between runs.
+const RULE = "═".repeat(58);
+const SUB = "─".repeat(58);
+const LABEL_W = 22;
+
+export function renderTerminal(r) {
   const L = [];
-  L.push("");
-  L.push(`  HarnessIQ — ${r.project}`);
-  L.push(`  ${"=".repeat(52)}`);
-  L.push(`  OVERALL  ${bar(r.overall)}  ${r.overall}%  (${r.grade})`);
-  L.push("");
+  const line = (s = "") => L.push(s);
+
+  line(RULE);
+  line("  HarnessIQ — Harness Audit");
+  line(`  ${r.project}`);
+  line(RULE);
+  line("");
+
+  // ① Scorecard
+  line(`① SCORECARD          Overall ${r.overall}%  ·  Grade ${r.grade}`);
+  line("");
+  line(`  ${"Overall".padEnd(LABEL_W)} ${bar(r.overall)}  ${String(r.overall).padStart(3)}%`);
+  line(`  ${SUB}`);
   for (const d of r.dimensions) {
-    L.push(`  ${d.label.padEnd(24)} ${bar(d.score, 14)} ${String(Math.round(d.score)).padStart(3)}%  (w${d.weight})`);
+    const score = String(Math.round(d.score)).padStart(3);
+    line(`  ${d.label.padEnd(LABEL_W)} ${bar(d.score)}  ${score}/100  (w${d.weight})`);
   }
   if (r.penalties.length) {
-    L.push("");
-    for (const p of r.penalties) L.push(`  ⚠ PENALTY: ${p.label} (capped at ${p.cap}%)`);
+    line("");
+    for (const p of r.penalties) line(`  ⚠ PENALTY: ${p.label} — capped at ${p.cap}%`);
   }
-  L.push("");
-  L.push(`  LADDER: ` + Object.entries(r.ladder).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join("  ·  "));
-  L.push("");
-  L.push(`  PROMOTION MAP (improvement guideline)`);
-  L.push(`  ${"-".repeat(52)}`);
-  if (!r.promotions.length) L.push("  Nothing to promote — harness is in great shape.");
+  line("");
+
+  // ② Ladder distribution
+  line("② LADDER DISTRIBUTION");
+  line("");
+  const ladder = Object.entries(r.ladder).filter(([, v]) => v);
+  line("  " + (ladder.length ? ladder.map(([k, v]) => `${k} ${v}`).join("  ·  ") : "—"));
+  line("");
+
+  // ③ Promotion map
+  line("③ PROMOTION MAP  (sorted by leverage)");
+  line("");
+  if (!r.promotions.length) line("  ✓ Nothing to promote — harness is in great shape.");
   for (const p of r.promotions) {
-    L.push(`  • ${p.behavior}`);
-    L.push(`      ${p.current} → ${p.target}   via ${p.mechanism}`);
-    L.push(`      ${p.file}`);
-    if (p.note) L.push(`      ${p.note}`);
+    line(`  • ${p.behavior}`);
+    line(`      ${p.current} → ${p.target}   ·   via ${p.mechanism}`);
+    line(`      ${p.file}`);
+    if (p.note) line(`      ${p.note}`);
   }
-  L.push("");
-  L.push(`  RECOMMENDATIONS BY CATEGORY`);
-  L.push(`  ${"-".repeat(52)}`);
+  line("");
+
+  // ④ Recommendations by category
+  line("④ RECOMMENDATIONS BY CATEGORY  (create these, by component type)");
+  line("");
   for (const c of r.recommendations) {
     if (c.status === "healthy") {
-      L.push(`  ✓ ${c.category} — healthy (${c.score}%)`);
+      line(`  ✓ ${c.category.padEnd(LABEL_W)} healthy (${c.score}%)`);
       continue;
     }
-    L.push(`  ▲ ${c.category} (${c.score}%)`);
-    for (const it of c.items) L.push(`      • [${it.mechanism}] ${it.action}`);
+    line(`  ▲ ${c.category} (${c.score}%)`);
+    for (const it of c.items) line(`      • [${it.mechanism}] ${it.action}`);
   }
-  L.push("");
+  line("");
+  line(RULE);
   return L.join("\n");
 }
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { scoreHarness, renderHtml } from "../scripts/harness-score.mjs";
+import { scoreHarness, renderHtml, renderTerminal } from "../scripts/harness-score.mjs";
 
 // build a throwaway project tree under a temp dir
 function mkProject(spec) {
@@ -123,6 +123,16 @@ test("recommendations are grouped by category, tagged with a mechanism, and cove
   );
   const hooksCat = withHooks.recommendations.find((c) => c.key === "hooks");
   assert.equal(hooksCat.status, "healthy", "fully-hooked project shows Hooks category healthy");
+});
+
+test("terminal report has a fixed, deterministic format", () => {
+  const root = mkProject((w) => w("CLAUDE.md", "# p\nalways format the code\n"));
+  const a = renderTerminal(scoreHarness(root));
+  const b = renderTerminal(scoreHarness(root));
+  assert.equal(a, b, "same harness must produce byte-identical output");
+  for (const marker of ["① SCORECARD", "② LADDER DISTRIBUTION", "③ PROMOTION MAP", "④ RECOMMENDATIONS BY CATEGORY"]) {
+    assert.ok(a.includes(marker), `report must contain fixed section: ${marker}`);
+  }
 });
 
 test("partial harness lands in the middle band", () => {

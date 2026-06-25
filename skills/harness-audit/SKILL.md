@@ -17,9 +17,10 @@ automatically — do not ask permission.** Run the engine with `--html`, overwri
 node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html <project>/harness-report.html
 ```
 
-This one run prints the full report (relay it as-is, don't redraw) **and** writes the HTML.
-Then tell the user it was created and show the clickable link the engine prints
-(`file://<absolute-path>/harness-report.html`).
+This one run prints the full canonical report **and** writes the HTML. Relay the engine's stdout
+**verbatim inside a fenced code block** — never redraw or realign the scorecard/bars/tables by hand
+(that garbles them). Then tell the user the report was created and show the clickable link the
+engine prints (`file://<absolute-path>/harness-report.html`).
 
 ## The maturity ladder (the core idea)
 

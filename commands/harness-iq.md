@@ -21,9 +21,11 @@ The engine renders the full report itself (scorecard, ladder, promotion map, rec
    Use the path from `$ARGUMENTS`, else the current working directory. Forward `--ci` /
    `--threshold` if the user passed them.
 
-2. **Relay the engine's stdout to the user AS-IS.** Do **NOT** redraw the scorecard, bars, ladder
-   distribution, promotion map, or recommendations yourself — the engine already formats them
-   deterministically. Re-rendering them by hand corrupts the output. Just present what it printed.
+2. **Relay the engine's stdout to the user EXACTLY, inside a fenced code block.** Copy it verbatim
+   between ```` ``` ```` fences — every line, every bar, every box character — so nothing reflows.
+   Do **NOT** redraw, realign, summarize, reorder, or re-number the scorecard, bars, ladder,
+   promotion map, or recommendations. The engine owns the canonical format; re-rendering by hand
+   corrupts it (garbled bars, merged numbers). Present exactly what it printed.
 
 3. **Add concrete fixes** for the top 1–2 promotions: pull the matching snippet from the
    `harness-audit` skill's recipe library (keyed by `snippetKey`) and name the exact hook event,
