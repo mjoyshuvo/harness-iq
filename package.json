@@ -1,6 +1,6 @@
 {
   "name": "harness-iq",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Score your Claude Code harness and get a ladder-mapped improvement guideline.",
   "type": "module",
   "scripts": {

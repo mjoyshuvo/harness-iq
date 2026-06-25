@@ -2,7 +2,7 @@
   "name": "harness-iq",
   "displayName": "HarnessIQ",
   "description": "Audits a project's Claude Code harness, scores it as a percentage, and returns a ladder-mapped improvement guideline (which instructions to promote from suggested → triggered → enforced → verified).",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
     "name": "Mrityunjoy Das"
   },
