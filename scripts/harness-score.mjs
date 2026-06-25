@@ -686,16 +686,19 @@ export function renderTerminal(r) {
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const gradeColor = (g) =>
-  ({ A: "#34d399", B: "#22d3ee", C: "#fbbf24", D: "#fb923c", F: "#f87171" }[g] || "#9aa3b8");
+  ({ A: "#0e7c6b", B: "#1f9d8f", C: "#c79a3a", D: "#cf7d3c", F: "#c4503e" }[g] || "#7a8a86");
 
 export function renderHtml(r, generatedAt) {
   const gc = gradeColor(r.grade);
+  const dimColor = (s) =>
+    s >= 90 ? "#0e5a4f" : s >= 75 ? "#1f9d8f" : s >= 50 ? "#54bdac" : s >= 25 ? "#93d6c9" : "#cbe6df";
   const dims = r.dimensions
-    .map(
-      (d) => `<div class="dim"><div class="dl">${esc(d.label)} <span class="w">w${d.weight}</span></div>
-      <div class="track"><div class="fill" style="width:${Math.round(d.score)}%"></div></div>
-      <div class="ds">${Math.round(d.score)}%</div></div>`
-    )
+    .map((d) => {
+      const s = Math.round(d.score);
+      return `<div class="dim"><div class="dl">${esc(d.label)}<span class="w">w${d.weight}</span></div>
+      <div class="track"><div class="fill" style="width:${s}%;background:${dimColor(s)}"></div></div>
+      <div class="ds">${s}<span>/100</span></div></div>`;
+    })
     .join("");
   const ladder =
     Object.entries(r.ladder)
@@ -705,79 +708,96 @@ export function renderHtml(r, generatedAt) {
   const proms = r.promotions.length
     ? r.promotions
         .map(
-          (p) => `<tr><td>${esc(p.behavior)}</td>
-        <td class="nowrap"><span class="st">${esc(p.current)}</span> → <span class="st tgt">${esc(p.target)}</span></td>
-        <td><code>${esc(p.mechanism)}</code></td>
-        <td><code class="file">${esc(p.file)}</code>${p.note ? `<div class="nt">${esc(p.note)}</div>` : ""}</td></tr>`
+          (p) => `<div class="prom"><div class="pb">${esc(p.behavior)}</div>
+        <div class="pm"><span class="mech">${esc(p.mechanism)}</span> ${esc(p.current)} → ${esc(p.target)} · <code>${esc(p.file)}</code></div>
+        ${p.note ? `<div class="ev">${esc(p.note)}</div>` : ""}</div>`
         )
         .join("")
-    : `<tr><td colspan="4" class="ok">Nothing to promote — harness is in great shape.</td></tr>`;
+    : `<div class="rmut">✓ Nothing to promote — harness is in great shape.</div>`;
   const pen = r.penalties
     .map((p) => `<div class="pen">⚠ ${esc(p.label)} — score capped at ${p.cap}%</div>`)
     .join("");
   const recs = (r.recommendations || [])
     .map((c) =>
       c.status === "healthy"
-        ? `<div class="rec"><span class="rcat ok">✓ ${esc(c.category)}</span><span class="rmut">healthy · ${c.score}%</span></div>`
-        : `<div class="rec"><span class="rcat">▲ ${esc(c.category)}</span><span class="rmut">${c.score}%</span>
+        ? `<div class="rec ok"><span class="rcat">✓ ${esc(c.category)}</span><span class="rmut">healthy · ${c.score}%</span></div>`
+        : `<div class="rec"><div class="rhead"><span class="rcat">${esc(c.category)}</span><span class="rmut">${c.score}%</span></div>
         <ul class="rlist">${c.items
           .map(
             (it) =>
-              `<li><code>${esc(it.mechanism)}</code> ${esc(it.action)}${it.evidence ? ` <span class="ev">(from: ${esc(it.evidence)})</span>` : ""}</li>`
+              `<li><span class="mech">${esc(it.mechanism)}</span> ${esc(it.action)}${it.evidence ? ` <span class="ev">(from: ${esc(it.evidence)})</span>` : ""}</li>`
           )
           .join("")}</ul></div>`
     )
     .join("");
+  const improveCount = (r.recommendations || []).filter((c) => c.status === "improve").length;
+  const actionCount = (r.recommendations || []).reduce((n, c) => n + c.items.length, 0);
+  const LEN = Math.PI * 50;
+  const val = (r.overall / 100) * LEN;
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HarnessIQ — ${esc(r.overall)}% (${esc(r.grade)})</title>
 <style>
-:root{--bg:#0e1016;--panel:#161a24;--line:#2a3142;--ink:#e8ebf2;--mut:#9aa3b8;--gc:${gc}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
-font:15px/1.5 ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif;padding:32px}
-.wrap{max-width:860px;margin:0 auto}
-h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font:12px ui-monospace,Menlo,monospace;margin-bottom:24px;word-break:break-all}
-.top{display:flex;gap:24px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:20px}
-.gauge{width:120px;height:120px;border-radius:50%;flex:none;
-background:conic-gradient(var(--gc) ${r.overall}%,#222838 0);display:grid;place-items:center}
-.gauge .inner{width:92px;height:92px;border-radius:50%;background:var(--panel);display:grid;place-items:center;text-align:center}
-.gauge b{font-size:28px}.gauge small{display:block;color:var(--mut);font-size:11px;letter-spacing:.1em}
-.grade{font-size:26px;font-weight:700;color:var(--gc)}
-.sumtxt{color:var(--mut);font-size:13px}
-h2{font:600 12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:26px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
-.dim{display:grid;grid-template-columns:200px 1fr 48px;gap:12px;align-items:center;margin:7px 0}
-.dl{font-size:13px}.dl .w{color:var(--mut);font-size:11px}
-.track{height:9px;background:#222838;border-radius:6px;overflow:hidden}
-.fill{height:100%;background:linear-gradient(90deg,#7c6cff,#22d3ee)}
-.ds{text-align:right;font:12px ui-monospace,monospace;color:var(--mut)}
-.pill{display:inline-block;background:#222838;border:1px solid var(--line);border-radius:99px;padding:4px 10px;margin:0 6px 6px 0;font:12px ui-monospace,monospace;color:var(--mut)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;color:var(--mut);font:600 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line);padding:8px}
-td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
-.nowrap{white-space:nowrap}.st{color:var(--mut)}.st.tgt{color:var(--gc)}
-code{background:#222838;border-radius:5px;padding:1px 6px;font-size:12px}
-code.file{color:#9fe9f5;background:none;padding:0}
-.nt{color:var(--mut);font-size:12px;margin-top:3px}.ok{color:#34d399}
-.pen{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:10px 14px;margin:14px 0;color:#fca5a5}
-.foot{color:var(--mut);font-size:11px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
-.rec{padding:10px 0;border-bottom:1px solid var(--line)}
-.rcat{font-weight:600;margin-right:10px}.rcat.ok{color:#34d399}.rmut{color:var(--mut);font-size:12px}
-.rlist{margin:8px 0 2px;padding-left:18px}.rlist li{font-size:13px;color:var(--ink);margin:4px 0}
-.rlist code{color:#c4bbff}.ev{color:var(--mut);font-size:11px}
+:root{--bg:#f4f3ee;--card:#fff;--ink:#26302e;--mut:#8a938f;--line:#e7e4dc;--gc:${gc}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);padding:28px;
+font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:920px;margin:0 auto}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:18px}
+h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+.proj{color:var(--mut);font-size:12px;margin-top:2px;word-break:break-all}
+.gen{color:var(--mut);font-size:11px;white-space:nowrap}
+.lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.cards{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.card .big{font-size:30px;font-weight:700;line-height:1.1;margin-top:6px}
+.gaugewrap{display:flex;align-items:center;gap:14px;margin-top:6px}
+.gtxt b{font-size:30px}.gtxt .grade{color:var(--gc);font-weight:700;font-size:14px}
+.rmut{color:var(--mut);font-size:12px;margin-top:4px}
+.pen{background:#fbeee9;border:1px solid #f0cdbf;color:#b4502f;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+.sec h2{font-size:15px;margin:0 0 14px;font-weight:700}
+.dim{display:grid;grid-template-columns:200px 1fr 66px;gap:12px;align-items:center;margin:9px 0}
+.dl{font-size:13px}.dl .w{color:var(--mut);font-size:11px;margin-left:6px}
+.track{height:16px;background:#eef0ec;border-radius:6px;overflow:hidden}
+.fill{height:100%;border-radius:6px}
+.ds{text-align:right;font-weight:600;font-size:13px}.ds span{color:var(--mut);font-weight:400;font-size:11px}
+.pill{display:inline-block;background:#eef3f1;border:1px solid var(--line);border-radius:99px;padding:4px 11px;margin:0 6px 6px 0;font-size:12px;color:#4a5a56}
+.prom{padding:11px 0;border-top:1px solid var(--line)}.prom:first-child{border-top:none}
+.pb{font-weight:600;font-size:13.5px}.pm{font-size:12.5px;color:#4a5a56;margin-top:3px}
+.rec{padding:12px 0;border-top:1px solid var(--line)}.rec:first-child{border-top:none}
+.rec.ok{display:flex;justify-content:space-between;align-items:center}
+.rcat{font-weight:600;font-size:14px}.rhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rlist{margin:0;padding:0;list-style:none}.rlist li{font-size:13px;margin:6px 0}
+.mech{display:inline-block;background:var(--gc);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;margin-right:4px}
+code{background:#eef0ec;border-radius:5px;padding:1px 6px;font-size:12px}
+.ev{color:var(--mut);font-size:11px}
+.foot{color:var(--mut);font-size:11px;margin-top:8px;text-align:center}
+@media(max-width:640px){.cards{grid-template-columns:1fr}.dim{grid-template-columns:120px 1fr 56px}}
 </style></head>
 <body><div class="wrap">
-<h1>HarnessIQ report</h1>
-<div class="sub">${esc(r.project)}</div>
-<div class="top">
-  <div class="gauge"><div class="inner"><div><b>${r.overall}%</b><small>SCORE</small></div></div></div>
-  <div><div class="grade">Grade ${esc(r.grade)}</div><div class="sumtxt">${esc(r.summary)}</div></div>
+<div class="head">
+  <div><h1>HarnessIQ — Harness Audit</h1><div class="proj">${esc(r.project)}</div></div>
+  <div class="gen">${generatedAt ? esc(generatedAt) : ""}</div>
 </div>
 ${pen}
-<h2>Dimensions</h2>${dims}
-<h2>Ladder distribution</h2>${ladder}
-<h2>Promotion map — improvement guideline</h2>
-<table><thead><tr><th>Behavior</th><th>Now → Target</th><th>Mechanism</th><th>What to add</th></tr></thead><tbody>${proms}</tbody></table>
-<h2>Recommendations by category</h2>${recs}
+<div class="cards">
+  <div class="card"><div class="lbl">Overall score</div>
+    <div class="gaugewrap">
+      <svg width="118" height="72" viewBox="0 0 120 72" aria-hidden="true">
+        <path d="M10,64 A50,50 0 0 1 110,64" fill="none" stroke="#eef0ec" stroke-width="10" stroke-linecap="round"/>
+        <path d="M10,64 A50,50 0 0 1 110,64" fill="none" stroke="${gc}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${val.toFixed(1)} ${LEN.toFixed(1)}"/>
+      </svg>
+      <div class="gtxt"><b>${r.overall}%</b><div class="grade">Grade ${esc(r.grade)}</div></div>
+    </div>
+  </div>
+  <div class="card"><div class="lbl">To promote</div><div class="big">${r.promotions.length}</div><div class="rmut">behaviors below target</div></div>
+  <div class="card"><div class="lbl">Recommendations</div><div class="big">${actionCount}</div><div class="rmut">${improveCount} categor${improveCount === 1 ? "y" : "ies"} to improve</div></div>
+</div>
+<div class="sec"><h2>Dimensions</h2>${dims}</div>
+<div class="sec"><h2>Recommendations by category</h2>${recs}</div>
+<div class="sec"><h2>Promotion map</h2>${proms}</div>
+<div class="sec"><h2>Ladder distribution</h2>${ladder}</div>
 <div class="foot">Generated by HarnessIQ${generatedAt ? " · " + esc(generatedAt) : ""}</div>
 </div></body></html>`;
 }
@@ -810,14 +830,20 @@ function main(argv) {
 
   const result = scoreHarness(target);
 
+  let out = null;
   if (htmlPath) {
-    const out = path.resolve(htmlPath);
+    out = path.resolve(htmlPath);
     fs.writeFileSync(out, renderHtml(result, new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC"));
-    process.stderr.write(`HTML report written to ${out}\nOpen: file://${out}\n`);
   }
 
-  if (flags.has("--json")) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-  else if (!htmlPath || !flags.has("--quiet")) process.stdout.write(renderTerminal(result));
+  if (flags.has("--json")) {
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+    if (out) process.stderr.write(`HTML report: file://${out}\n`);
+  } else {
+    if (!htmlPath || !flags.has("--quiet")) process.stdout.write(renderTerminal(result));
+    // The HTML link is intentionally LAST so it's the final thing the user sees.
+    if (out) process.stdout.write(`\n  📄 HTML report (open in a browser):\n     file://${out}\n`);
+  }
 
   if (flags.has("--ci") && result.overall < threshold) {
     process.stderr.write(`\nHarnessIQ: ${result.overall}% < threshold ${threshold}%\n`);
