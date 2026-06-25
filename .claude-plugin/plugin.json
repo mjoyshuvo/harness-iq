@@ -7,8 +7,5 @@
     "name": "Mrityunjoy Das"
   },
   "license": "MIT",
-  "keywords": ["harness", "audit", "score", "hooks", "skills", "agentic", "best-practices", "linter"],
-  "commands": "./commands/",
-  "skills": "./skills/",
-  "agents": "./agents/"
+  "keywords": ["harness", "audit", "score", "hooks", "skills", "agentic", "best-practices", "linter"]
 }
