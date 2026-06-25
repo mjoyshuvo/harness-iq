@@ -139,7 +139,7 @@ export function scoreHarness(projectDir) {
 
   // penalties
   const penalties = [];
-  const secretHits = scanSecrets(settingsRaw) .concat(scanSecrets(localRaw));
+  const secretHits = scanSecrets(settingsRaw).concat(scanSecrets(localRaw));
   if (secretHits.length) {
     penalties.push({ label: `Plaintext secret in settings (${secretHits[0]})`, cap: 40 });
     overall = Math.min(overall, 40);
@@ -153,7 +153,7 @@ export function scoreHarness(projectDir) {
     overall,
     grade: grade(overall),
     dimensions,
-    ladder: ladderCounts(dimensions, promotions),
+    ladder: ladderCounts(promotions),
     promotions,
     penalties,
     summary: summarize(overall, dimensions, promotions),
@@ -439,7 +439,7 @@ function buildPromotions(root, claude, dimensions, settings, hasSecret) {
   return P.sort((a, b) => b.leverage - a.leverage);
 }
 
-function ladderCounts(dimensions, promotions) {
+function ladderCounts(promotions) {
   // distribution of where promotions currently sit
   const counts = { Absent: 0, Suggested: 0, Triggered: 0, Enforced: 0, Verified: 0, Critical: 0 };
   for (const p of promotions) counts[p.current] = (counts[p.current] || 0) + 1;
