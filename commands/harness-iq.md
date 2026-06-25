@@ -16,8 +16,10 @@ The engine renders the full report itself (scorecard, ladder, promotion map, rec
 1. **Run the engine once.** This prints the formatted report to stdout *and* writes/overwrites
    the HTML report, *and* prints a `file://` link on stderr:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path-or-cwd> --html <path-or-cwd>/harness-report.html
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path-or-cwd> --html
    ```
+   With no path after `--html`, the engine writes `harness-report.html` to the **root of the
+   audited project** (overwriting any previous one).
    Use the path from `$ARGUMENTS`, else the current working directory. Forward `--ci` /
    `--threshold` if the user passed them.
 

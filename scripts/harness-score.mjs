@@ -704,7 +704,6 @@ function main(argv) {
     return next && !next.startsWith("--") ? next : dflt;
   };
   const threshold = Number(valueOf("--threshold", 70));
-  const htmlPath = flags.has("--html") ? valueOf("--html", "harness-report.html") : null;
 
   // positional target = first non-flag arg that isn't a flag's value
   const consumed = new Set();
@@ -712,7 +711,14 @@ function main(argv) {
     const i = args.indexOf(f);
     if (i >= 0 && args[i + 1] && !args[i + 1].startsWith("--")) consumed.add(i + 1);
   }
-  const target = args.find((a, i) => !a.startsWith("--") && !consumed.has(i)) || process.cwd();
+  const target = path.resolve(
+    args.find((a, i) => !a.startsWith("--") && !consumed.has(i)) || process.cwd()
+  );
+
+  // --html with no explicit path → always the audited project's ROOT, not cwd.
+  const htmlPath = flags.has("--html")
+    ? valueOf("--html", path.join(target, "harness-report.html"))
+    : null;
 
   const result = scoreHarness(target);
 

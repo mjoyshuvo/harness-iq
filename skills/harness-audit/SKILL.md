@@ -14,8 +14,10 @@ Whenever you audit a harness (via `/harness-iq` or this skill), **always generat
 automatically — do not ask permission.** Run the engine with `--html`, overwriting any existing file:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html <project>/harness-report.html
+node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html
 ```
+With no path after `--html`, the report is written to `harness-report.html` in the **root of the
+audited project**.
 
 This one run prints the full canonical report **and** writes the HTML. Relay the engine's stdout
 **verbatim inside a fenced code block** — never redraw or realign the scorecard/bars/tables by hand

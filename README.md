@@ -38,7 +38,7 @@ to *enforced* hooks or *verified* gates.
 - 🪜 **Ladder-mapped guidance** — every gap tagged `Suggested → Triggered → Enforced → Verified`
   with the exact mechanism (hook / skill / rule / command / agent / memory) and file to add.
 - 🔒 **Security-aware** — a plaintext secret in settings is a hard penalty that caps the score.
-- 🧾 **Shareable HTML report** — `--html` writes a self-contained report (permission-gated in the command).
+- 🧾 **Shareable HTML report** — `--html` writes a self-contained report to the project root; auto-generated on every `/harness-iq` run.
 - 🤖 **CI-ready** — `--ci --threshold N` exits non-zero below a bar; `--json` for tooling.
 - 📦 **Zero dependencies** — pure Node, runs anywhere the plugin installs.
 
@@ -112,7 +112,7 @@ node scripts/harness-score.mjs [path] [--json] [--ci] [--threshold N] [--html [f
 |---|---|
 | _(none)_ | Print the terminal scorecard for `path` (default: cwd). |
 | `--json` | Emit the full result as JSON for tooling. |
-| `--html [file]` | Write a self-contained HTML report (default `harness-report.html`). |
+| `--html [file]` | Write a self-contained HTML report. No `file` → `harness-report.html` in the audited project's root. |
 | `--ci` | With `--threshold N`, exit non-zero when the score is below `N`. |
 | `--threshold N` | Set the CI pass bar (default `70`). |
 
