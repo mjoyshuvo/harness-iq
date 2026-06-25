@@ -1,0 +1,19 @@
+{
+  "name": "harness-iq",
+  "owner": {
+    "name": "Mrityunjoy Das"
+  },
+  "metadata": {
+    "description": "HarnessIQ — score and improve your Claude Code harness.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "harness-iq",
+      "source": ".",
+      "description": "Audit a project's Claude Code harness: percentage score + ladder-mapped improvement guideline.",
+      "version": "0.1.0",
+      "category": "development"
+    }
+  ]
+}
