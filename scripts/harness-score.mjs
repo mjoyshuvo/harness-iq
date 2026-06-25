@@ -694,7 +694,7 @@ function main(argv) {
   if (htmlPath) {
     const out = path.resolve(htmlPath);
     fs.writeFileSync(out, renderHtml(result, new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC"));
-    process.stderr.write(`HTML report written to ${out}\n`);
+    process.stderr.write(`HTML report written to ${out}\nOpen: file://${out}\n`);
   }
 
   if (flags.has("--json")) process.stdout.write(JSON.stringify(result, null, 2) + "\n");

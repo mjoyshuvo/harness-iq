@@ -8,6 +8,18 @@ description: Rubric, maturity-ladder philosophy, and fix recipes for auditing a 
 This skill backs the `/harness-iq` command. It explains *how* the score is built and supplies
 the **fix recipes** that turn a promotion into a copy-pasteable change.
 
+## Always emit the HTML report
+
+Whenever you audit a harness (via `/harness-iq` or this skill), **always generate the HTML report
+automatically — do not ask permission.** Run the engine with `--html`, overwriting any existing file:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html <project>/harness-report.html --quiet
+```
+
+Then tell the user it was created and show the clickable link the engine prints
+(`file://<absolute-path>/harness-report.html`).
+
 ## The maturity ladder (the core idea)
 
 Every desired behavior sits at one stage. Reliability rises as you climb. The whole point of an
