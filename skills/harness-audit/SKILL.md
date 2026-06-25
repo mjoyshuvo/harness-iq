@@ -14,9 +14,10 @@ Whenever you audit a harness (via `/harness-iq` or this skill), **always generat
 automatically — do not ask permission.** Run the engine with `--html`, overwriting any existing file:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html <project>/harness-report.html --quiet
+node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <project> --html <project>/harness-report.html
 ```
 
+This one run prints the full report (relay it as-is, don't redraw) **and** writes the HTML.
 Then tell the user it was created and show the clickable link the engine prints
 (`file://<absolute-path>/harness-report.html`).
 

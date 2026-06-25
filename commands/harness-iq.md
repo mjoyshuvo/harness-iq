@@ -1,69 +1,44 @@
 ---
 description: Audit this project's Claude Code harness — percentage score + ladder-mapped improvement guideline.
-argument-hint: "[path] [--json] [--ci] [--threshold N]"
+argument-hint: "[path] [--ci] [--threshold N]"
 allowed-tools: ["Bash(node *)", "Read", "Glob"]
 model: inherit
 ---
 
 # HarnessIQ — harness audit
 
-Run the deterministic scoring engine and turn its JSON into an actionable report.
+The engine renders the full report itself (scorecard, ladder, promotion map, recommendations)
+**and** writes the HTML report — in one run. Your job is to relay it and add concrete fixes,
+**not** to re-draw anything.
 
 ## Steps
 
-1. **Run the engine** (always pass `--json` so you get structured data):
+1. **Run the engine once.** This prints the formatted report to stdout *and* writes/overwrites
+   the HTML report, *and* prints a `file://` link on stderr:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path-or-cwd> --json
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path-or-cwd> --html <path-or-cwd>/harness-report.html
    ```
-   Use the path the user gave in `$ARGUMENTS`, otherwise the current working directory.
-   If the user passed `--ci`/`--threshold`, forward them too.
+   Use the path from `$ARGUMENTS`, else the current working directory. Forward `--ci` /
+   `--threshold` if the user passed them.
 
-2. **Parse the JSON** (`overall`, `grade`, `dimensions[]`, `ladder`, `promotions[]`,
-   `recommendations[]`, `penalties[]`).
+2. **Relay the engine's stdout to the user AS-IS.** Do **NOT** redraw the scorecard, bars, ladder
+   distribution, promotion map, or recommendations yourself — the engine already formats them
+   deterministically. Re-rendering them by hand corrupts the output. Just present what it printed.
 
-3. **Render four views** to the user:
+3. **Add concrete fixes** for the top 1–2 promotions: pull the matching snippet from the
+   `harness-audit` skill's recipe library (keyed by `snippetKey`) and name the exact hook event,
+   rule frontmatter, skill stub, or agent file to create.
 
-   ### ① Scorecard
-   The `overall` % + `grade`, then each dimension as a short bar with its score and weight.
-   Call out any `penalties` prominently (a plaintext secret caps the whole score).
+4. **Show the HTML link.** Tell the user the report was created and surface the `file://…/harness-report.html`
+   link the engine printed, so they can open or share it. (It's regenerated/overwritten every run —
+   no need to ask permission.)
 
-   ### ② Ladder distribution
-   From `ladder`, show how many behaviors sit at each stage
-   (Absent · Suggested · Triggered · Enforced · Verified). This tells the user *where* the
-   harness is weak, not just the number.
-
-   ### ③ Promotion Map (the improvement guideline)
-   Render `promotions` as a table, in the given order (already sorted by leverage):
-
-   | Behavior | Now → Target | Mechanism | What to add |
-   |---|---|---|---|
-
-   For each promotion, give the **concrete fix**: cite `file`, and include a minimal,
-   copy-pasteable snippet drawn from the `harness-audit` skill's recipe library
-   (keyed by `snippetKey`). Be specific — name the exact hook event, rule frontmatter,
-   skill stub, or agent file to create.
-
-   ### ④ Recommendations by category
-   From `recommendations[]` (grouped by category, highest-weight first). For each `improve`
-   category, list its `items[]` and name the **mechanism to create** for each —
-   `hook` / `skill` / `subagent` / `rule` / `command` / `memory` / `settings`. Render
-   `healthy` categories as a single ✓ line. This guarantees even a high-scoring harness gets
-   its "next-best" moves per category, not a blank result.
-
-4. **Offer to apply** the top one or two fixes. Do NOT auto-apply — wait for the user to choose.
-   Treat the security penalty (plaintext secret) as the highest priority if present, and never
-   print the secret value back.
-
-5. **Always generate the HTML report** (no need to ask). After the views, run the engine again
-   with `--html`, writing/overwriting a report in the audited project:
-   ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path> --html <path>/harness-report.html --quiet
-   ```
-   Then tell the user the report was created and show the clickable link the engine prints
-   (`file://<absolute-path>/harness-report.html`). Replace any existing report. Do not ask
-   permission — just create it and report the location.
+5. **Offer to apply** the top fix — never auto-apply. Treat a plaintext-secret penalty as the
+   highest priority, and never print the secret value back.
 
 ## Notes
-- The score is deterministic (same harness → same %). The *advice* is yours to make concrete.
-- Invoke the `harness-audit` skill for the rubric, the maturity-ladder rationale, and the
-  full snippet library when composing the Promotion Map.
+- The score and the rendered views are deterministic (same harness → same output). Only the
+  fix-snippet advice in step 3 is yours to compose.
+- For JSON/CI instead of the human report: `--json` (machine output) or `--ci --threshold N`
+  (non-zero exit below the bar). These are for tooling, not the interactive command.
+- Invoke the `harness-audit` skill for the rubric and the full snippet library when writing step 3.
