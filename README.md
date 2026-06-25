@@ -11,7 +11,7 @@ gates.
 ## Install
 
 ```
-/plugin marketplace add <your-github-username>/harness-iq
+/plugin marketplace add mjoyshuvo/harness-iq
 /plugin install harness-iq@harness-iq
 ```
 
