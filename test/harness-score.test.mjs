@@ -125,6 +125,26 @@ test("recommendations are grouped by category, tagged with a mechanism, and cove
   assert.equal(hooksCat.status, "healthy", "fully-hooked project shows Hooks category healthy");
 });
 
+test("recommendations cite the project's own directives and tools (not just generic)", () => {
+  const root = mkProject((w) =>
+    w(
+      "CLAUDE.md",
+      "# Rules\nNEVER delete or restructure a curve.\nAlways run `tools/check_no_deletes.py` before commit.\nRun `dprint fmt` on every YAML edit.\n"
+    )
+  );
+  const r = scoreHarness(root);
+  assert.ok(r.projectSignals.tools.includes("tools/check_no_deletes.py"), "mines the referenced tool");
+  assert.ok(r.projectSignals.tools.includes("dprint"), "mines dprint");
+  const hooks = r.recommendations.find((c) => c.key === "hooks");
+  const txt = hooks.items.map((i) => i.action).join("\n");
+  assert.match(txt, /check_no_deletes\.py/, "hook recommendation names the actual script");
+  const rules = r.recommendations.find((c) => c.key === "rules");
+  assert.match(rules.items.map((i) => i.action).join("\n"), /delete or restructure a curve/i,
+    "rule recommendation quotes the actual convention");
+  // project-specific items carry evidence
+  assert.ok(hooks.items.some((i) => i.evidence), "specific items cite their source");
+});
+
 test("terminal report has a fixed, deterministic format", () => {
   const root = mkProject((w) => w("CLAUDE.md", "# p\nalways format the code\n"));
   const a = renderTerminal(scoreHarness(root));

@@ -147,6 +147,7 @@ export function scoreHarness(projectDir) {
 
   overall = Math.round(clamp(overall));
   const promotions = buildPromotions(root, claude, dimensions, settings, secretHits.length > 0);
+  const specifics = mineProjectSpecifics(root);
 
   return {
     project: root,
@@ -155,7 +156,8 @@ export function scoreHarness(projectDir) {
     dimensions,
     ladder: ladderCounts(promotions),
     promotions,
-    recommendations: buildRecommendations(dimensions),
+    recommendations: buildRecommendations(dimensions, specifics),
+    projectSignals: specifics,
     penalties,
     summary: summarize(overall, dimensions, promotions),
   };
@@ -504,10 +506,92 @@ const RECS = {
   ],
 };
 
-function buildRecommendations(dimensions) {
+// ---------- project-specific mining ----------
+// Reads the project's OWN guides/rules and names concrete things to promote — the actual
+// directives to enforce and the actual tools/scripts to wire into hooks. This is what makes
+// recommendations specific to THIS repo rather than generic boilerplate.
+const TOOL_RE =
+  /\b([\w./-]+\.(?:py|sh|js|mjs|ts))\b|\b(dprint|pytest|black|ruff|flake8|eslint|prettier|mypy|isort|tox|terraform|kubeval|yamllint)\b/g;
+const VALIDATOR_RE = /(check|validate|verify|lint|format|test|guard|dprint|pytest|black|ruff|flake8|eslint|prettier|mypy|isort|yamllint|kubeval)/i;
+const IMP_RE = /(?:^|\s)((?:always|never|must|don'?t|do not|ensure|validate|require|run)\b[^.\n]{0,130})/i;
+const RUNVERB_RE = /\b(run|validate|verify|check|execute|enforce)\b/i;
+const CONVENTION_RE = /\b(never|always|must|don'?t|do not)\b/i;
+
+function mineProjectSpecifics(root) {
+  const sources = [
+    ["CLAUDE.md", read(path.join(root, "CLAUDE.md"))],
+    ["CLAUDE.local.md", read(path.join(root, "CLAUDE.local.md"))],
+  ];
+  for (const f of listFiles(path.join(root, ".claude", "rules"), ".mdc").concat(
+    listFiles(path.join(root, ".claude", "rules"), ".md")
+  ))
+    sources.push([path.relative(root, f), read(f)]);
+
+  const directives = [];
+  const tools = new Set();
+  for (const [src, txt] of sources) {
+    if (!txt) continue;
+    for (const raw of txt.split("\n")) {
+      const line = raw.replace(/[*`#>]/g, "").trim();
+      const m = line.match(IMP_RE);
+      if (m) {
+        const text = m[1].replace(/\s+/g, " ").trim().slice(0, 110);
+        const inLine = [...line.matchAll(TOOL_RE)].map((x) => x[1] || x[2]).filter(Boolean);
+        if (text.length > 8) directives.push({ text, src, tools: inLine });
+      }
+      for (const t of [...line.matchAll(TOOL_RE)].map((x) => x[1] || x[2]).filter(Boolean))
+        tools.add(t);
+    }
+  }
+  const seen = new Set();
+  const uniq = directives.filter((d) => {
+    const k = d.text.toLowerCase();
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+  return { directives: uniq.slice(0, 12), tools: [...tools].slice(0, 12) };
+}
+
+// Turn mined specifics into recommendation items, bucketed by mechanism category.
+function specificItems(spec) {
+  const out = { hooks: [], security: [], skills: [], rules: [] };
+  for (const t of spec.tools) {
+    if (VALIDATOR_RE.test(t))
+      out.hooks.push({
+        mechanism: "hook",
+        action: `Wire \`${t}\` into a hook so it runs automatically (PostToolUse for formatters; Stop/PreToolUse for guards)`,
+        evidence: "referenced in your guides",
+      });
+  }
+  for (const d of spec.directives) {
+    if (d.tools.length || RUNVERB_RE.test(d.text)) {
+      const tool = d.tools[0];
+      out.hooks.push({
+        mechanism: "hook",
+        action: `Enforce “${d.text}”${tool ? ` — wire \`${tool}\`` : ""} as a hook`,
+        evidence: d.src,
+      });
+    } else if (CONVENTION_RE.test(d.text)) {
+      out.rules.push({
+        mechanism: "rule",
+        action: `Encode “${d.text}” as an alwaysApply rule`,
+        evidence: d.src,
+      });
+    }
+  }
+  const dedupeCap = (arr) => {
+    const s = new Set();
+    return arr.filter((i) => (s.has(i.action) ? false : (s.add(i.action), true))).slice(0, 4);
+  };
+  for (const k of Object.keys(out)) out[k] = dedupeCap(out[k]);
+  return out;
+}
+
+function buildRecommendations(dimensions, spec) {
+  const specByKey = specificItems(spec || { directives: [], tools: [] });
   return dimensions
     .map((d) => {
-      const items = [];
+      // project-specific items first (named for THIS repo), then generic next-best moves
+      const items = [...(specByKey[d.key] || [])];
       for (const [match, mechanism, action] of RECS[d.key] || []) {
         const s = d.signals.find((x) => x.label.includes(match));
         if (s && !s.ok) items.push({ mechanism, action });
@@ -591,7 +675,8 @@ export function renderTerminal(r) {
       continue;
     }
     line(`  ▲ ${c.category} (${c.score}%)`);
-    for (const it of c.items) line(`      • [${it.mechanism}] ${it.action}`);
+    for (const it of c.items)
+      line(`      • [${it.mechanism}] ${it.action}${it.evidence ? `  (from: ${it.evidence})` : ""}`);
   }
   line("");
   line(RULE);
@@ -636,7 +721,10 @@ export function renderHtml(r, generatedAt) {
         ? `<div class="rec"><span class="rcat ok">✓ ${esc(c.category)}</span><span class="rmut">healthy · ${c.score}%</span></div>`
         : `<div class="rec"><span class="rcat">▲ ${esc(c.category)}</span><span class="rmut">${c.score}%</span>
         <ul class="rlist">${c.items
-          .map((it) => `<li><code>${esc(it.mechanism)}</code> ${esc(it.action)}</li>`)
+          .map(
+            (it) =>
+              `<li><code>${esc(it.mechanism)}</code> ${esc(it.action)}${it.evidence ? ` <span class="ev">(from: ${esc(it.evidence)})</span>` : ""}</li>`
+          )
           .join("")}</ul></div>`
     )
     .join("");
@@ -675,7 +763,7 @@ code.file{color:#9fe9f5;background:none;padding:0}
 .rec{padding:10px 0;border-bottom:1px solid var(--line)}
 .rcat{font-weight:600;margin-right:10px}.rcat.ok{color:#34d399}.rmut{color:var(--mut);font-size:12px}
 .rlist{margin:8px 0 2px;padding-left:18px}.rlist li{font-size:13px;color:var(--ink);margin:4px 0}
-.rlist code{color:#c4bbff}
+.rlist code{color:#c4bbff}.ev{color:var(--mut);font-size:11px}
 </style></head>
 <body><div class="wrap">
 <h1>HarnessIQ report</h1>
