@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { scoreHarness } from "../scripts/harness-score.mjs";
+import { scoreHarness, renderHtml } from "../scripts/harness-score.mjs";
 
 // build a throwaway project tree under a temp dir
 function mkProject(spec) {
@@ -82,6 +82,16 @@ test("a rich harness scores high with no penalties", () => {
 test("scoring is deterministic", () => {
   const root = mkProject((w) => w("CLAUDE.md", "# p\n"));
   assert.equal(scoreHarness(root).overall, scoreHarness(root).overall);
+});
+
+test("renderHtml produces a self-contained doc with the score and no unescaped injection", () => {
+  const root = mkProject((w) => w("CLAUDE.md", "# <script>alert(1)</script>\n"));
+  const r = scoreHarness(root);
+  const html = renderHtml(r, "2026-01-01 00:00 UTC");
+  assert.ok(html.startsWith("<!DOCTYPE html>"), "should be a full HTML doc");
+  assert.ok(html.includes(`${r.overall}%`), "should embed the score");
+  assert.ok(html.includes("Promotion map"), "should include the promotion map");
+  assert.ok(!/<script>alert/.test(html), "project-derived text must be escaped (no raw script tag)");
 });
 
 test("partial harness lands in the middle band", () => {

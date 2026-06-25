@@ -487,17 +487,117 @@ function renderTerminal(r) {
   return L.join("\n");
 }
 
+const esc = (s) =>
+  String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const gradeColor = (g) =>
+  ({ A: "#34d399", B: "#22d3ee", C: "#fbbf24", D: "#fb923c", F: "#f87171" }[g] || "#9aa3b8");
+
+export function renderHtml(r, generatedAt) {
+  const gc = gradeColor(r.grade);
+  const dims = r.dimensions
+    .map(
+      (d) => `<div class="dim"><div class="dl">${esc(d.label)} <span class="w">w${d.weight}</span></div>
+      <div class="track"><div class="fill" style="width:${Math.round(d.score)}%"></div></div>
+      <div class="ds">${Math.round(d.score)}%</div></div>`
+    )
+    .join("");
+  const ladder =
+    Object.entries(r.ladder)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `<span class="pill">${esc(k)} · ${v}</span>`)
+      .join("") || `<span class="pill">—</span>`;
+  const proms = r.promotions.length
+    ? r.promotions
+        .map(
+          (p) => `<tr><td>${esc(p.behavior)}</td>
+        <td class="nowrap"><span class="st">${esc(p.current)}</span> → <span class="st tgt">${esc(p.target)}</span></td>
+        <td><code>${esc(p.mechanism)}</code></td>
+        <td><code class="file">${esc(p.file)}</code>${p.note ? `<div class="nt">${esc(p.note)}</div>` : ""}</td></tr>`
+        )
+        .join("")
+    : `<tr><td colspan="4" class="ok">Nothing to promote — harness is in great shape.</td></tr>`;
+  const pen = r.penalties
+    .map((p) => `<div class="pen">⚠ ${esc(p.label)} — score capped at ${p.cap}%</div>`)
+    .join("");
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HarnessIQ — ${esc(r.overall)}% (${esc(r.grade)})</title>
+<style>
+:root{--bg:#0e1016;--panel:#161a24;--line:#2a3142;--ink:#e8ebf2;--mut:#9aa3b8;--gc:${gc}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.5 ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif;padding:32px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font:12px ui-monospace,Menlo,monospace;margin-bottom:24px;word-break:break-all}
+.top{display:flex;gap:24px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:20px}
+.gauge{width:120px;height:120px;border-radius:50%;flex:none;
+background:conic-gradient(var(--gc) ${r.overall}%,#222838 0);display:grid;place-items:center}
+.gauge .inner{width:92px;height:92px;border-radius:50%;background:var(--panel);display:grid;place-items:center;text-align:center}
+.gauge b{font-size:28px}.gauge small{display:block;color:var(--mut);font-size:11px;letter-spacing:.1em}
+.grade{font-size:26px;font-weight:700;color:var(--gc)}
+.sumtxt{color:var(--mut);font-size:13px}
+h2{font:600 12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:26px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.dim{display:grid;grid-template-columns:200px 1fr 48px;gap:12px;align-items:center;margin:7px 0}
+.dl{font-size:13px}.dl .w{color:var(--mut);font-size:11px}
+.track{height:9px;background:#222838;border-radius:6px;overflow:hidden}
+.fill{height:100%;background:linear-gradient(90deg,#7c6cff,#22d3ee)}
+.ds{text-align:right;font:12px ui-monospace,monospace;color:var(--mut)}
+.pill{display:inline-block;background:#222838;border:1px solid var(--line);border-radius:99px;padding:4px 10px;margin:0 6px 6px 0;font:12px ui-monospace,monospace;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--mut);font:600 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line);padding:8px}
+td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
+.nowrap{white-space:nowrap}.st{color:var(--mut)}.st.tgt{color:var(--gc)}
+code{background:#222838;border-radius:5px;padding:1px 6px;font-size:12px}
+code.file{color:#9fe9f5;background:none;padding:0}
+.nt{color:var(--mut);font-size:12px;margin-top:3px}.ok{color:#34d399}
+.pen{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:10px 14px;margin:14px 0;color:#fca5a5}
+.foot{color:var(--mut);font-size:11px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+</style></head>
+<body><div class="wrap">
+<h1>HarnessIQ report</h1>
+<div class="sub">${esc(r.project)}</div>
+<div class="top">
+  <div class="gauge"><div class="inner"><div><b>${r.overall}%</b><small>SCORE</small></div></div></div>
+  <div><div class="grade">Grade ${esc(r.grade)}</div><div class="sumtxt">${esc(r.summary)}</div></div>
+</div>
+${pen}
+<h2>Dimensions</h2>${dims}
+<h2>Ladder distribution</h2>${ladder}
+<h2>Promotion map — improvement guideline</h2>
+<table><thead><tr><th>Behavior</th><th>Now → Target</th><th>Mechanism</th><th>What to add</th></tr></thead><tbody>${proms}</tbody></table>
+<div class="foot">Generated by HarnessIQ${generatedAt ? " · " + esc(generatedAt) : ""}</div>
+</div></body></html>`;
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const flags = new Set(args.filter((a) => a.startsWith("--")));
-  const thIdx = args.indexOf("--threshold");
-  const threshold = thIdx >= 0 ? Number(args[thIdx + 1]) : 70;
-  const target = args.find((a) => !a.startsWith("--") && a !== String(threshold)) || process.cwd();
+  const valueOf = (flag, dflt) => {
+    const i = args.indexOf(flag);
+    if (i < 0) return undefined;
+    const next = args[i + 1];
+    return next && !next.startsWith("--") ? next : dflt;
+  };
+  const threshold = Number(valueOf("--threshold", 70));
+  const htmlPath = flags.has("--html") ? valueOf("--html", "harness-report.html") : null;
+
+  // positional target = first non-flag arg that isn't a flag's value
+  const consumed = new Set();
+  for (const f of ["--threshold", "--html"]) {
+    const i = args.indexOf(f);
+    if (i >= 0 && args[i + 1] && !args[i + 1].startsWith("--")) consumed.add(i + 1);
+  }
+  const target = args.find((a, i) => !a.startsWith("--") && !consumed.has(i)) || process.cwd();
 
   const result = scoreHarness(target);
 
+  if (htmlPath) {
+    const out = path.resolve(htmlPath);
+    fs.writeFileSync(out, renderHtml(result, new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC"));
+    process.stderr.write(`HTML report written to ${out}\n`);
+  }
+
   if (flags.has("--json")) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-  else process.stdout.write(renderTerminal(result));
+  else if (!htmlPath || !flags.has("--quiet")) process.stdout.write(renderTerminal(result));
 
   if (flags.has("--ci") && result.overall < threshold) {
     process.stderr.write(`\nHarnessIQ: ${result.overall}% < threshold ${threshold}%\n`);

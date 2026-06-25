@@ -46,6 +46,14 @@ Run the deterministic scoring engine and turn its JSON into an actionable report
    Treat the security penalty (plaintext secret) as the highest priority if present, and never
    print the secret value back.
 
+5. **Offer a shareable HTML report — but ask first.** After the views, ask the user whether they
+   want an HTML report. **Only if they say yes**, confirm the output path, then generate it:
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/harness-score.mjs" <path> --html <output.html>
+   ```
+   Never write the HTML file without explicit permission. Tell them where it was written so they
+   can open/share it.
+
 ## Notes
 - The score is deterministic (same harness → same %). The *advice* is yours to make concrete.
 - Invoke the `harness-audit` skill for the rubric, the maturity-ladder rationale, and the

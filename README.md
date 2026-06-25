@@ -69,11 +69,13 @@ penalty that caps the whole score.
 The engine runs standalone (zero dependencies, Node ≥ 18):
 
 ```bash
-node scripts/harness-score.mjs [path] [--json] [--ci] [--threshold N]
+node scripts/harness-score.mjs [path] [--json] [--ci] [--threshold N] [--html [file]]
 ```
 
 - `--json` — machine-readable output for tooling.
 - `--ci --threshold 70` — exit non-zero when the score is below the threshold (pipeline gate).
+- `--html [file]` — write a self-contained, shareable HTML report (default `harness-report.html`).
+  When run via `/harness-iq`, the command **asks your permission** before generating the HTML.
 
 ## Development
 
