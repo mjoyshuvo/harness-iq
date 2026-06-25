@@ -18,9 +18,10 @@ Run the deterministic scoring engine and turn its JSON into an actionable report
    Use the path the user gave in `$ARGUMENTS`, otherwise the current working directory.
    If the user passed `--ci`/`--threshold`, forward them too.
 
-2. **Parse the JSON** (`overall`, `grade`, `dimensions[]`, `ladder`, `promotions[]`, `penalties[]`).
+2. **Parse the JSON** (`overall`, `grade`, `dimensions[]`, `ladder`, `promotions[]`,
+   `recommendations[]`, `penalties[]`).
 
-3. **Render three views** to the user:
+3. **Render four views** to the user:
 
    ### ① Scorecard
    The `overall` % + `grade`, then each dimension as a short bar with its score and weight.
@@ -41,6 +42,13 @@ Run the deterministic scoring engine and turn its JSON into an actionable report
    copy-pasteable snippet drawn from the `harness-audit` skill's recipe library
    (keyed by `snippetKey`). Be specific — name the exact hook event, rule frontmatter,
    skill stub, or agent file to create.
+
+   ### ④ Recommendations by category
+   From `recommendations[]` (grouped by category, highest-weight first). For each `improve`
+   category, list its `items[]` and name the **mechanism to create** for each —
+   `hook` / `skill` / `subagent` / `rule` / `command` / `memory` / `settings`. Render
+   `healthy` categories as a single ✓ line. This guarantees even a high-scoring harness gets
+   its "next-best" moves per category, not a blank result.
 
 4. **Offer to apply** the top one or two fixes. Do NOT auto-apply — wait for the user to choose.
    Treat the security penalty (plaintext secret) as the highest priority if present, and never

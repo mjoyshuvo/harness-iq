@@ -155,6 +155,7 @@ export function scoreHarness(projectDir) {
     dimensions,
     ladder: ladderCounts(promotions),
     promotions,
+    recommendations: buildRecommendations(dimensions),
     penalties,
     summary: summarize(overall, dimensions, promotions),
   };
@@ -451,6 +452,80 @@ function summarize(overall, dimensions, promotions) {
   return `${overall}% (${grade(overall)}). Weakest: ${weakest.join(", ")}. ${promotions.length} promotion(s) suggested.`;
 }
 
+// ---------- recommendations (grouped by category, with the component to create) ----------
+// Each entry: [signal-label substring, mechanism to create, concrete action].
+// A failing signal (ok:false) becomes a recommendation — so suggestions appear even on
+// high-scoring harnesses (the "next-best" moves), not just on empty ones.
+const RECS = {
+  hooks: [
+    ["hooks block present", "hook", "Create a hooks block in .claude/settings.json"],
+    ["PostToolUse", "hook", "Add a PostToolUse hook to auto-format & lint edited files"],
+    ["SessionStart", "hook", "Add a SessionStart hook to surface memory/context at startup"],
+    ["Stop hook", "hook", "Add a Stop hook as an end-of-task gate/reminder"],
+    ["Pre/UserPromptSubmit", "hook", "Add a UserPromptSubmit/PreToolUse hook to validate or inject before actions"],
+    ["executable hook script", "hook", "Add an executable script under .claude/hooks/ (chmod +x)"],
+  ],
+  security: [
+    ["settings.json present", "settings", "Add .claude/settings.json"],
+    ["settings.local.json present", "settings", "Add .claude/settings.local.json for machine-specific permissions"],
+    ["no plaintext secrets", "settings", "Move the plaintext secret to an env var/secret store and rotate it"],
+    ["permission allow-list is scoped", "settings", "Replace any blanket wildcard with a scoped permission allow-list"],
+  ],
+  context: [
+    ["CLAUDE.md present", "context", "Add a CLAUDE.md with standing project context"],
+    ["CLAUDE.local.md", "context", "Add CLAUDE.local.md / CONTEXT.md for local context"],
+    ["auto-memory directory", "memory", "Create the auto-memory directory with a MEMORY.md index"],
+    ["MEMORY.md with", "memory", "Capture more durable lessons in memory (aim for ≥3 entries)"],
+  ],
+  skills: [
+    ["skills present", "skill", "Create your first skill for a recurring procedure"],
+    ["name+description frontmatter", "skill", "Fill in name+description frontmatter on every SKILL.md"],
+    ["bundles helper scripts", "skill", "Add a scripts/ helper to a skill for its deterministic steps"],
+  ],
+  subagents: [
+    ["subagents present", "subagent", "Add a scoped subagent (reviewer / verifier / explorer)"],
+    ["specify a model", "subagent", "Set a model on each agent for cost control"],
+    ["scope allowed-tools", "subagent", "Scope allowed-tools on each agent (least privilege)"],
+  ],
+  planverify: [
+    ["_plan/", "process", "Write plan files under _plan/ before non-trivial work"],
+    ["verification language", "context", "State verification expectations in CLAUDE.md (tests/proof before done)"],
+    ["verifier/reviewer subagent", "subagent", "Add a verifier/reviewer subagent"],
+    ["end-of-task gate", "hook", "Add a Stop hook or a review command as an end-of-task gate"],
+  ],
+  rules: [
+    ["rules present", "rule", "Add rule files for conventions under .claude/rules/"],
+    ["alwaysApply", "rule", "Mark a key rule alwaysApply for stronger enforcement"],
+    ["glob-scoped", "rule", "Scope a rule to file globs so it triggers in context"],
+  ],
+  commands: [
+    ["commands present", "command", "Add a slash command for a repeatable workflow"],
+    ["orchestrates", "command", "Have a command orchestrate a subagent/skill"],
+  ],
+};
+
+function buildRecommendations(dimensions) {
+  return dimensions
+    .map((d) => {
+      const items = [];
+      for (const [match, mechanism, action] of RECS[d.key] || []) {
+        const s = d.signals.find((x) => x.label.includes(match));
+        if (s && !s.ok) items.push({ mechanism, action });
+      }
+      return {
+        category: d.label,
+        key: d.key,
+        weight: d.weight,
+        score: Math.round(d.score),
+        status: items.length ? "improve" : "healthy",
+        items,
+      };
+    })
+    .sort((a, b) =>
+      a.status === b.status ? b.weight - a.weight : a.status === "improve" ? -1 : 1
+    );
+}
+
 // ---------- CLI ----------
 function bar(pct, width = 20) {
   const fill = Math.round((pct / 100) * width);
@@ -482,6 +557,17 @@ function renderTerminal(r) {
     L.push(`      ${p.current} → ${p.target}   via ${p.mechanism}`);
     L.push(`      ${p.file}`);
     if (p.note) L.push(`      ${p.note}`);
+  }
+  L.push("");
+  L.push(`  RECOMMENDATIONS BY CATEGORY`);
+  L.push(`  ${"-".repeat(52)}`);
+  for (const c of r.recommendations) {
+    if (c.status === "healthy") {
+      L.push(`  ✓ ${c.category} — healthy (${c.score}%)`);
+      continue;
+    }
+    L.push(`  ▲ ${c.category} (${c.score}%)`);
+    for (const it of c.items) L.push(`      • [${it.mechanism}] ${it.action}`);
   }
   L.push("");
   return L.join("\n");
@@ -519,6 +605,16 @@ export function renderHtml(r, generatedAt) {
   const pen = r.penalties
     .map((p) => `<div class="pen">⚠ ${esc(p.label)} — score capped at ${p.cap}%</div>`)
     .join("");
+  const recs = (r.recommendations || [])
+    .map((c) =>
+      c.status === "healthy"
+        ? `<div class="rec"><span class="rcat ok">✓ ${esc(c.category)}</span><span class="rmut">healthy · ${c.score}%</span></div>`
+        : `<div class="rec"><span class="rcat">▲ ${esc(c.category)}</span><span class="rmut">${c.score}%</span>
+        <ul class="rlist">${c.items
+          .map((it) => `<li><code>${esc(it.mechanism)}</code> ${esc(it.action)}</li>`)
+          .join("")}</ul></div>`
+    )
+    .join("");
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HarnessIQ — ${esc(r.overall)}% (${esc(r.grade)})</title>
@@ -551,6 +647,10 @@ code.file{color:#9fe9f5;background:none;padding:0}
 .nt{color:var(--mut);font-size:12px;margin-top:3px}.ok{color:#34d399}
 .pen{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:10px 14px;margin:14px 0;color:#fca5a5}
 .foot{color:var(--mut);font-size:11px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+.rec{padding:10px 0;border-bottom:1px solid var(--line)}
+.rcat{font-weight:600;margin-right:10px}.rcat.ok{color:#34d399}.rmut{color:var(--mut);font-size:12px}
+.rlist{margin:8px 0 2px;padding-left:18px}.rlist li{font-size:13px;color:var(--ink);margin:4px 0}
+.rlist code{color:#c4bbff}
 </style></head>
 <body><div class="wrap">
 <h1>HarnessIQ report</h1>
@@ -564,6 +664,7 @@ ${pen}
 <h2>Ladder distribution</h2>${ladder}
 <h2>Promotion map — improvement guideline</h2>
 <table><thead><tr><th>Behavior</th><th>Now → Target</th><th>Mechanism</th><th>What to add</th></tr></thead><tbody>${proms}</tbody></table>
+<h2>Recommendations by category</h2>${recs}
 <div class="foot">Generated by HarnessIQ${generatedAt ? " · " + esc(generatedAt) : ""}</div>
 </div></body></html>`;
 }

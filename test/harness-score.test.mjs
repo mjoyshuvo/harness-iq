@@ -94,6 +94,37 @@ test("renderHtml produces a self-contained doc with the score and no unescaped i
   assert.ok(!/<script>alert/.test(html), "project-derived text must be escaped (no raw script tag)");
 });
 
+test("recommendations are grouped by category, tagged with a mechanism, and cover empty + healthy", () => {
+  const empty = scoreHarness(mkProject(() => {}));
+  assert.ok(Array.isArray(empty.recommendations), "recommendations present");
+  const skills = empty.recommendations.find((c) => c.key === "skills");
+  assert.equal(skills.status, "improve", "empty project should want skills");
+  assert.ok(
+    skills.items.every((it) => typeof it.mechanism === "string" && it.action),
+    "each item names a mechanism + action"
+  );
+  // improve categories sort before healthy
+  const firstHealthy = empty.recommendations.findIndex((c) => c.status === "healthy");
+  const lastImprove = empty.recommendations.map((c) => c.status).lastIndexOf("improve");
+  if (firstHealthy !== -1) assert.ok(lastImprove < firstHealthy, "improve categories come first");
+
+  // a project with full hooks shows that category as healthy (not a blank result)
+  const withHooks = scoreHarness(
+    mkProject((w) => {
+      w(
+        ".claude/settings.json",
+        JSON.stringify({
+          hooks: { PostToolUse: [{}], SessionStart: [{}], Stop: [{}], PreToolUse: [{}] },
+          permissions: { allow: ["Bash(ls:*)"] },
+        })
+      );
+      w(".claude/hooks/x.sh", "#!/bin/sh\n", 0o755);
+    })
+  );
+  const hooksCat = withHooks.recommendations.find((c) => c.key === "hooks");
+  assert.equal(hooksCat.status, "healthy", "fully-hooked project shows Hooks category healthy");
+});
+
 test("partial harness lands in the middle band", () => {
   const root = mkProject((w) => {
     w("CLAUDE.md", "# Project\n");
