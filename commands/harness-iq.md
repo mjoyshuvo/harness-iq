@@ -33,12 +33,12 @@ The engine renders the full report itself (scorecard, ladder, promotion map, rec
    `harness-audit` skill's recipe library (keyed by `snippetKey`) and name the exact hook event,
    rule frontmatter, skill stub, or agent file to create.
 
-4. **Show the HTML link.** Tell the user the report was created and surface the `file://…/harness-report.html`
-   link the engine printed, so they can open or share it. (It's regenerated/overwritten every run —
-   no need to ask permission.)
-
-5. **Offer to apply** the top fix — never auto-apply. Treat a plaintext-secret penalty as the
+4. **Offer to apply** the top fix — never auto-apply. Treat a plaintext-secret penalty as the
    highest priority, and never print the secret value back.
+
+5. **End with the HTML link — and nothing after it.** The very last line of your entire response
+   must be the `file://…/harness-report.html` link the engine printed on stderr. Show it **once**;
+   never repeat it earlier, and add no text below it. (Regenerated every run; no permission needed.)
 
 ## Notes
 - The score and the rendered views are deterministic (same harness → same output). Only the

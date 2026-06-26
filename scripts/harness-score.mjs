@@ -696,7 +696,7 @@ export function renderHtml(r, generatedAt) {
     .map((d) => {
       const s = Math.round(d.score);
       return `<div class="dim"><div class="dl">${esc(d.label)}<span class="w">w${d.weight}</span></div>
-      <div class="track"><div class="fill" style="width:${s}%;background:${dimColor(s)}"></div></div>
+      <div class="track"><div class="fill" style="width:${s}%;background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,.04) 48%,rgba(0,0,0,.12)),${dimColor(s)}"></div></div>
       <div class="ds">${s}<span>/100</span></div></div>`;
     })
     .join("");
@@ -738,7 +738,7 @@ export function renderHtml(r, generatedAt) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HarnessIQ — ${esc(r.overall)}% (${esc(r.grade)})</title>
 <style>
-:root{--bg:#f4f3ee;--card:#fff;--ink:#26302e;--mut:#8a938f;--line:#e7e4dc;--gc:${gc}}
+:root{--bg:#ffffff;--card:#f3f1ea;--ink:#26302e;--mut:#8a938f;--line:#e6e1d6;--gc:${gc}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);padding:28px;
 font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -749,18 +749,18 @@ h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
 .gen{color:var(--mut);font-size:11px;white-space:nowrap}
 .lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .cards{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px;margin-bottom:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 1px 2px rgba(40,30,10,.05)}
 .card .big{font-size:30px;font-weight:700;line-height:1.1;margin-top:6px}
 .gaugewrap{display:flex;align-items:center;gap:14px;margin-top:6px}
 .gtxt b{font-size:30px}.gtxt .grade{color:var(--gc);font-weight:700;font-size:14px}
 .rmut{color:var(--mut);font-size:12px;margin-top:4px}
 .pen{background:#fbeee9;border:1px solid #f0cdbf;color:#b4502f;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px}
-.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(40,30,10,.05)}
 .sec h2{font-size:15px;margin:0 0 14px;font-weight:700}
 .dim{display:grid;grid-template-columns:200px 1fr 66px;gap:12px;align-items:center;margin:9px 0}
 .dl{font-size:13px}.dl .w{color:var(--mut);font-size:11px;margin-left:6px}
-.track{height:16px;background:#eef0ec;border-radius:6px;overflow:hidden}
-.fill{height:100%;border-radius:6px}
+.track{height:16px;background:#e7e3d8;border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(40,30,10,.08)}
+.fill{height:100%;border-radius:6px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .ds{text-align:right;font-weight:600;font-size:13px}.ds span{color:var(--mut);font-weight:400;font-size:11px}
 .pill{display:inline-block;background:#eef3f1;border:1px solid var(--line);border-radius:99px;padding:4px 11px;margin:0 6px 6px 0;font-size:12px;color:#4a5a56}
 .prom{padding:11px 0;border-top:1px solid var(--line)}.prom:first-child{border-top:none}
@@ -769,8 +769,8 @@ h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
 .rec.ok{display:flex;justify-content:space-between;align-items:center}
 .rcat{font-weight:600;font-size:14px}.rhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .rlist{margin:0;padding:0;list-style:none}.rlist li{font-size:13px;margin:6px 0}
-.mech{display:inline-block;background:var(--gc);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;margin-right:4px}
-code{background:#eef0ec;border-radius:5px;padding:1px 6px;font-size:12px}
+.mech{display:inline-block;background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(0,0,0,.14)),var(--gc);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;margin-right:4px;box-shadow:0 1px 1px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.3)}
+code{background:#e7e3d8;border-radius:5px;padding:1px 6px;font-size:12px}
 .ev{color:var(--mut);font-size:11px}
 .foot{color:var(--mut);font-size:11px;margin-top:8px;text-align:center}
 @media(max-width:640px){.cards{grid-template-columns:1fr}.dim{grid-template-columns:120px 1fr 56px}}
@@ -787,6 +787,7 @@ ${pen}
       <svg width="118" height="72" viewBox="0 0 120 72" aria-hidden="true">
         <path d="M10,64 A50,50 0 0 1 110,64" fill="none" stroke="#eef0ec" stroke-width="10" stroke-linecap="round"/>
         <path d="M10,64 A50,50 0 0 1 110,64" fill="none" stroke="${gc}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${val.toFixed(1)} ${LEN.toFixed(1)}"/>
+        <path d="M10,64 A50,50 0 0 1 110,64" fill="none" stroke="#ffffff" stroke-opacity="0.32" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="${val.toFixed(1)} ${LEN.toFixed(1)}"/>
       </svg>
       <div class="gtxt"><b>${r.overall}%</b><div class="grade">Grade ${esc(r.grade)}</div></div>
     </div>
@@ -841,8 +842,9 @@ function main(argv) {
     if (out) process.stderr.write(`HTML report: file://${out}\n`);
   } else {
     if (!htmlPath || !flags.has("--quiet")) process.stdout.write(renderTerminal(result));
-    // The HTML link is intentionally LAST so it's the final thing the user sees.
-    if (out) process.stdout.write(`\n  📄 HTML report (open in a browser):\n     file://${out}\n`);
+    // Link to STDERR (not stdout) so it isn't embedded in the relayed report; the command
+    // surfaces it once as the final line. Raw CLI users still see it last, after the report.
+    if (out) process.stderr.write(`\nHTML report (open in a browser): file://${out}\n`);
   }
 
   if (flags.has("--ci") && result.overall < threshold) {
